@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pencatatan Pemesanan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .sidebar {
+            transition: all 0.3s;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100vh;
+                z-index: 50;
+                width: 80vw;
+                max-width: 320px;
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .flex-1 {
+                margin-left: 0 !important;
+            }
+        }
+        .form-input:focus {
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        .dashboard-card {
+            transition: all 0.3s;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* Add scroll for sidebar on mobile */
+        @media (max-width: 768px) {
+            .sidebar {
+                overflow-y: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class=" min-h-screen">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar w-64 bg-gradient-to-b from-blue-800 to-blue-900 text-white p-4 fixed h-full z-10">
+            <div class="flex items-center justify-between mb-8">
+                <h1 class="text-2xl font-bold">OrderTrack</h1>
+                <button id="closeSidebar" class="md:hidden text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <nav>
+                <ul class="space-y-2">
+                    <li>
+                        <button onclick="showPage('dashboard')" class="nav-link w-full flex items-center space-x-2 p-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                            </svg>
+                            <span>Dashboard</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="showPage('orders')" class="nav-link w-full flex items-center space-x-2 p-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                            </svg>
+                            <span>Pesanan</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="showPage('customers')" class="nav-link w-full flex items-center space-x-2 p-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                            </svg>
+                            <span>Pelanggan</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="showPage('reports')" class="nav-link w-full flex items-center space-x-2 p-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm2 10a1 1 0 10-2 0v3a1 1 0 102 0v-3zm2-3a1 1 0 011 1v5a1 1 0 11-2 0v-5a1 1 0 011-1zm4-1a1 1 0 10-2 0v7a1 1 0 102 0V8z" clip-rule="evenodd" />
+                            </svg>
+                            <span>Laporan</span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-0 md:ml-64">
+            <!-- Top Bar -->
+            <div class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-1">
+                <button id="openSidebar" class="md:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <div class="p-4 md:p-6">
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <button class="flex items-center space-x-1 focus:outline-none">
+                                <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <span class="hidden md:inline text-gray-700">Admin</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Content -->
+            <div class="p-6">
+                <!-- Dashboard Page -->
+                <div id="dashboard" class="page">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Dashboard</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="dashboard-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-sm text-gray-500">Total Pesanan</p>
+                                    <h3 class="text-2xl font-bold text-gray-800" id="totalOrders">0</h3>
+                                </div>
+                                <div class="bg-blue-100 p-3 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-sm text-gray-500">Total Pendapatan</p>
+                                    <h3 class="text-2xl font-bold text-gray-800" id="totalRevenue">Rp 0</h3>
+                                </div>
+                                <div class="bg-green-100 p-3 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-sm text-gray-500">Total Pelanggan</p>
+                                    <h3 class="text-2xl font-bold text-gray-800" id="totalCustomers">0</h3>
+                                </div>
+                                <div class="bg-purple-100 p-3 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-sm text-gray-500">Pesanan Pending</p>
+                                    <h3 class="text-2xl font-bold text-gray-800" id="pendingOrders">0</h3>
+                                </div>
+                                <div class="bg-yellow-100 p-3 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Statistik Pesanan</h3>
+                            <div class="h-64">
+                                <canvas id="orderChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Pesanan Terbaru</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full bg-white">
+                                    <thead>
+                                        <tr>
+                                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pelanggan</th>
+                                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pesanan</th>
+                                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
+                                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recentOrdersTable">
+                                        <tr>
+                                            <td class="py-3 px-4 border-b border-gray-200 text-sm" colspan="4">Belum ada pesanan</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Orders Page -->
+                <div id="orders" class="page hidden">
+                    <div class="flex flex-row md:flex-cols justify-between items-center mb-6">
+                        <h2 class="text-lg lg:text-2xl font-semibold text-gray-800">Daftar Pesanan</h2>
+                        <button onclick="showOrderForm()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center space-x-2 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="text-sm">Tambah Pesanan</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                        <!-- Filter dan Search -->
+                        <div class="p-4 border-b border-gray-200">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <!-- Input Search -->
+                            <div class="relative w-full sm:max-w-xs">
+                                <input type="text" id="orderSearch" placeholder="Cari pesanan..."
+                                class="w-full border border-gray-300 rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <div class="absolute left-3 top-2.5 text-gray-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                </div>
+                            </div>
+
+                            <!-- Filter Select -->
+                            <div class="w-full sm:w-auto">
+                                <select id="orderFilter"
+                                class="w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="all">Semua Tipe</option>
+                                <option value="ready">Ready Stok</option>
+                                <option value="pending">Pending Order</option>
+                                </select>
+                            </div>
+                            </div>
+                        </div>
+
+                        <!-- Table -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white text-sm">
+                            <thead>
+                                <tr>
+                                <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pelanggan</th>
+                                <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pesanan</th>
+                                <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipe</th>
+                                <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kuantiti</th>
+                                <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
+                                <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pembayaran</th>
+                                <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pengantaran</th>
+                                <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTable">
+                                <tr>
+                                <td class="py-4 px-4 border-b border-gray-200 text-sm text-center" colspan="8">Belum ada pesanan</td>
+                                </tr>
+                            </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="p-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+                            <div class="text-sm text-gray-600 text-center sm:text-left">
+                            Menampilkan <span id="orderCount">0</span> pesanan
+                            </div>
+                            <div class="flex space-x-2">
+                            <button class="px-3 py-1 border border-gray-300 rounded-md bg-white text-gray-600 hover:bg-gray-50">
+                                Sebelumnya
+                            </button>
+                            <button class="px-3 py-1 border border-gray-300 rounded-md bg-white text-gray-600 hover:bg-gray-50">
+                                Selanjutnya
+                            </button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Order Form Modal -->
+                    <div id="orderFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-screen overflow-y-auto">
+                            <div class="p-6 border-b border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-xl font-semibold text-gray-800" id="orderFormTitle">Tambah Pesanan Baru</h3>
+                                    <button onclick="hideOrderForm()" class="text-gray-400 hover:text-gray-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                <form id="orderForm">
+                                    <input type="hidden" id="orderId">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <h4 class="text-lg font-medium text-gray-700 mb-4">Informasi Pelanggan</h4>
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label for="customerName" class="block text-sm font-medium text-gray-700 mb-1">Nama Pelanggan</label>
+                                                    <input type="text" id="customerName" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                                </div>
+                                                <div>
+                                                    <label for="customerAddress" class="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+                                                    <textarea id="customerAddress" rows="3" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required></textarea>
+                                                </div>
+                                                <div>
+                                                    <label for="customerPhone" class="block text-sm font-medium text-gray-700 mb-1">Nomor Telepon</label>
+                                                    <input type="tel" id="customerPhone" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-lg font-medium text-gray-700 mb-4">Detail Pesanan</h4>
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label for="orderName" class="block text-sm font-medium text-gray-700 mb-1">Nama Pesanan</label>
+                                                    <input type="text" id="orderName" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                                </div>
+                                                <div>
+                                                    <label for="orderType" class="block text-sm font-medium text-gray-700 mb-1">Tipe Pesanan</label>
+                                                    <select id="orderType" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                                        <option value="ready">Ready Stok</option>
+                                                        <option value="pending">Pending Order</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Kuantiti</label>
+                                                    <input type="number" id="quantity" min="1" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                                </div>
+                                                <div>
+                                                    <label for="costPrice" class="block text-sm font-medium text-gray-700 mb-1">Harga HPP</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                            <span class="text-gray-500">Rp</span>
+                                                        </div>
+                                                        <input type="number" id="costPrice" min="0" class="form-input w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label for="sellingPrice" class="block text-sm font-medium text-gray-700 mb-1">Harga Jual</label>
+                                                    <div class="relative">
+                                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                            <span class="text-gray-500">Rp</span>
+                                                        </div>
+                                                        <input type="number" id="sellingPrice" min="0" class="form-input w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-6 border-t border-gray-200 pt-6">
+                                        <h4 class="text-lg font-medium text-gray-700 mb-4">Pembayaran & Pengantaran</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label for="paymentType" class="block text-sm font-medium text-gray-700 mb-1">Tipe Pembayaran</label>
+                                                <select id="paymentType" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                                    <option value="cash">Cash</option>
+                                                    <option value="transfer">Transfer</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label for="deliveryType" class="block text-sm font-medium text-gray-700 mb-1">Pengantaran</label>
+                                                <select id="deliveryType" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                                    <option value="pickup">Ambil Sendiri</option>
+                                                    <option value="cod">COD</option>
+                                                    <option value="delivery">Diantar</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-6 border-t border-gray-200 pt-6">
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <p class="text-sm text-gray-600">Total Harga:</p>
+                                                <p class="text-xl font-bold text-gray-800" id="totalPrice">Rp 0</p>
+                                            </div>
+                                            <div class="flex space-x-3">
+                                                <button type="button" onclick="hideOrderForm()" class="py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                                    Batal
+                                                </button>
+                                                <button type="submit" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                                    Simpan Pesanan
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Detail Modal -->
+                    <div id="orderDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl">
+                            <div class="p-6 border-b border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-xl font-semibold text-gray-800">Detail Pesanan</h3>
+                                    <button onclick="hideOrderDetail()" class="text-gray-400 hover:text-gray-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <h4 class="text-lg font-medium text-gray-700 mb-3">Informasi Pelanggan</h4>
+                                        <div class="space-y-2">
+                                            <p><span class="font-medium">Nama:</span> <span id="detailCustomerName"></span></p>
+                                            <p><span class="font-medium">Alamat:</span> <span id="detailCustomerAddress"></span></p>
+                                            <p><span class="font-medium">Telepon:</span> <span id="detailCustomerPhone"></span></p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-medium text-gray-700 mb-3">Detail Pesanan</h4>
+                                        <div class="space-y-2">
+                                            <p><span class="font-medium">Nama Pesanan:</span> <span id="detailOrderName"></span></p>
+                                            <p><span class="font-medium">Tipe Pesanan:</span> <span id="detailOrderType"></span></p>
+                                            <p><span class="font-medium">Kuantiti:</span> <span id="detailQuantity"></span></p>
+                                            <p><span class="font-medium">Harga HPP:</span> <span id="detailCostPrice"></span></p>
+                                            <p><span class="font-medium">Harga Jual:</span> <span id="detailSellingPrice"></span></p>
+                                            <p><span class="font-medium">Total:</span> <span id="detailTotalPrice" class="font-bold"></span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-6 border-t border-gray-200 pt-4">
+                                    <h4 class="text-lg font-medium text-gray-700 mb-3">Pembayaran & Pengantaran</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <p><span class="font-medium">Tipe Pembayaran:</span> <span id="detailPaymentType"></span></p>
+                                        <p><span class="font-medium">Pengantaran:</span> <span id="detailDeliveryType"></span></p>
+                                    </div>
+                                </div>
+                                <div class="mt-6 border-t border-gray-200 pt-4 flex justify-end space-x-3">
+                                    <button onclick="hideOrderDetail()" class="py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Tutup
+                                    </button>
+                                    <button onclick="editOrder()" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Edit Pesanan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delete Confirmation Modal -->
+                    <div id="deleteConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+                            <div class="p-6">
+                                <div class="flex items-center justify-center mb-4">
+                                    <div class="bg-red-100 rounded-full p-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">Konfirmasi Hapus</h3>
+                                <p class="text-gray-500 text-center mb-6">Apakah Anda yakin ingin menghapus pesanan ini? Tindakan ini tidak dapat dibatalkan.</p>
+                                <div class="flex justify-center space-x-3">
+                                    <button onclick="hideDeleteConfirm()" class="py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Batal
+                                    </button>
+                                    <button onclick="confirmDelete()" class="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                        Hapus
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customers Page -->
+                <div id="customers" class="page hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800">Daftar Pelanggan</h2>
+                        <button onclick="showCustomerForm()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center space-x-2 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                            </svg>
+                            <span>Tambah Pelanggan</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                        <div class="p-4 border-b border-gray-200">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
+                                <div class="flex items-center space-x-2">
+                                    <div class="relative">
+                                        <input type="text" id="customerSearch" placeholder="Cari pelanggan..." class="border border-gray-300 rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full">
+                                        <div class="absolute left-3 top-2.5 text-gray-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white">
+                                <thead>
+                                    <tr>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Alamat</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Telepon</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Pesanan</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customersTable">
+                                    <tr>
+                                        <td class="py-4 px-4 border-b border-gray-200 text-sm" colspan="5">Belum ada pelanggan</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="p-4 border-t border-gray-200 flex justify-between items-center">
+                            <div class="text-sm text-gray-600">Menampilkan <span id="customerCount">0</span> pelanggan</div>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 border border-gray-300 rounded-md bg-white text-gray-600 hover:bg-gray-50">Sebelumnya</button>
+                                <button class="px-3 py-1 border border-gray-300 rounded-md bg-white text-gray-600 hover:bg-gray-50">Selanjutnya</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Form Modal -->
+                    <div id="customerFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+                            <div class="p-6 border-b border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-xl font-semibold text-gray-800" id="customerFormTitle">Tambah Pelanggan Baru</h3>
+                                    <button onclick="hideCustomerForm()" class="text-gray-400 hover:text-gray-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                <form id="customerForm">
+                                    <input type="hidden" id="customerId">
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label for="customerFormName" class="block text-sm font-medium text-gray-700 mb-1">Nama Pelanggan</label>
+                                            <input type="text" id="customerFormName" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                        </div>
+                                        <div>
+                                            <label for="customerFormAddress" class="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+                                            <textarea id="customerFormAddress" rows="3" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required></textarea>
+                                        </div>
+                                        <div>
+                                            <label for="customerFormPhone" class="block text-sm font-medium text-gray-700 mb-1">Nomor Telepon</label>
+                                            <input type="tel" id="customerFormPhone" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                        </div>
+                                    </div>
+                                    <div class="mt-6 flex justify-end space-x-3">
+                                        <button type="button" onclick="hideCustomerForm()" class="py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Batal
+                                        </button>
+                                        <button type="submit" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            Simpan
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Detail Modal -->
+                    <div id="customerDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl">
+                            <div class="p-6 border-b border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-xl font-semibold text-gray-800">Detail Pelanggan</h3>
+                                    <button onclick="hideCustomerDetail()" class="text-gray-400 hover:text-gray-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                    <div>
+                                        <h4 class="text-lg font-medium text-gray-700 mb-3">Informasi Pelanggan</h4>
+                                        <div class="space-y-2">
+                                            <p><span class="font-medium">Nama:</span> <span id="detailCustomerViewName"></span></p>
+                                            <p><span class="font-medium">Alamat:</span> <span id="detailCustomerViewAddress"></span></p>
+                                            <p><span class="font-medium">Telepon:</span> <span id="detailCustomerViewPhone"></span></p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-medium text-gray-700 mb-3">Ringkasan</h4>
+                                        <div class="space-y-2">
+                                            <p><span class="font-medium">Total Pesanan:</span> <span id="detailCustomerOrderCount"></span></p>
+                                            <p><span class="font-medium">Total Pembelian:</span> <span id="detailCustomerTotalSpent" class="font-bold"></span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <h4 class="text-lg font-medium text-gray-700 mb-3">Riwayat Pesanan</h4>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full bg-white border border-gray-200">
+                                        <thead>
+                                            <tr>
+                                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pesanan</th>
+                                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kuantiti</th>
+                                                <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="customerOrdersTable">
+                                            <tr>
+                                                <td class="py-3 px-4 border-b border-gray-200 text-sm" colspan="3">Belum ada pesanan</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="mt-6 flex justify-end space-x-3">
+                                    <button onclick="hideCustomerDetail()" class="py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Tutup
+                                    </button>
+                                    <button onclick="editCustomer()" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Edit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delete Customer Confirmation Modal -->
+                    <div id="deleteCustomerConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+                            <div class="p-6">
+                                <div class="flex items-center justify-center mb-4">
+                                    <div class="bg-red-100 rounded-full p-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">Konfirmasi Hapus</h3>
+                                <p class="text-gray-500 text-center mb-6">Apakah Anda yakin ingin menghapus pelanggan ini? Semua pesanan terkait juga akan dihapus.</p>
+                                <div class="flex justify-center space-x-3">
+                                    <button onclick="hideDeleteCustomerConfirm()" class="py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Batal
+                                    </button>
+                                    <button onclick="confirmDeleteCustomer()" class="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                        Hapus
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports Page -->
+                <div id="reports" class="page hidden">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Laporan</h2>
+                    
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Filter Laporan</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="reportStartDate" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
+                                <input type="date" id="reportStartDate" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="reportEndDate" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
+                                <input type="date" id="reportEndDate" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="reportType" class="block text-sm font-medium text-gray-700 mb-1">Tipe Pesanan</label>
+                                <select id="reportType" class="form-input w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="all">Semua Tipe</option>
+                                    <option value="ready">Ready Stok</option>
+                                    <option value="pending">Pending Order</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button onclick="generateReport()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center space-x-2 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd" />
+                                </svg>
+                                <span>Generate Laporan</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Hasil Laporan</h3>
+                            <div class="flex space-x-2">
+                                <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg flex items-center space-x-2 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span>Export Excel</span>
+                                </button>
+                                <button onclick="exportToPDF()" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center space-x-2 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span>Export PDF</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <p class="text-sm text-gray-500 mb-1">Total Pesanan</p>
+                                <p class="text-2xl font-bold text-gray-800" id="reportTotalOrders">0</p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <p class="text-sm text-gray-500 mb-1">Total Pendapatan</p>
+                                <p class="text-2xl font-bold text-gray-800" id="reportTotalRevenue">Rp 0</p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <p class="text-sm text-gray-500 mb-1">Total Keuntungan</p>
+                                <p class="text-2xl font-bold text-gray-800" id="reportTotalProfit">Rp 0</p>
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white border border-gray-200">
+                                <thead>
+                                    <tr>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pelanggan</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pesanan</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipe</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kuantiti</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">HPP</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Harga Jual</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
+                                        <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Keuntungan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportTable">
+                                    <tr>
+                                        <td class="py-4 px-4 border-b border-gray-200 text-sm" colspan="8">Belum ada data laporan</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data Storage with localStorage
+        let customers = [];
+        let orders = [];
+        let currentOrderId = null;
+        let currentCustomerId = null;
+
+        // Load data from localStorage
+        function loadData() {
+            try {
+                const savedCustomers = localStorage.getItem('ordertrack_customers');
+                const savedOrders = localStorage.getItem('ordertrack_orders');
+                
+                if (savedCustomers) {
+                    customers = JSON.parse(savedCustomers);
+                    console.log("Loaded customers:", customers);
+                }
+                
+                if (savedOrders) {
+                    orders = JSON.parse(savedOrders);
+                    console.log("Loaded orders:", orders);
+                }
+                
+                console.log("Data loaded successfully");
+            } catch (error) {
+                console.error("Error loading data from localStorage:", error);
+                // Initialize with empty arrays if there's an error
+                customers = [];
+                orders = [];
+            }
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            try {
+                localStorage.setItem('ordertrack_customers', JSON.stringify(customers));
+                localStorage.setItem('ordertrack_orders', JSON.stringify(orders));
+                console.log("Data saved successfully:", { customers, orders });
+            } catch (error) {
+                console.error("Error saving data to localStorage:", error);
+                alert("Terjadi kesalahan saat menyimpan data. Silakan coba lagi.");
+            }
+        }
+
+        // Navigation
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.add('hidden');
+            }); // <-- Add missing closing brace here
+            document.getElementById(pageId).classList.remove('hidden');
+            
+            // Update active state in sidebar
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('bg-blue-700');
+            }); // <-- Add missing closing brace here
+            event.currentTarget.classList.add('bg-blue-700');
+            
+            // Close sidebar on mobile after navigation
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.remove('active');
+            }
+            
+            // Refresh data when switching pages
+            if (pageId === 'dashboard') {
+                updateDashboard();
+            } else if (pageId === 'orders') {
+                renderOrders();
+            } else if (pageId === 'customers') {
+                renderCustomers();
+            }
+        }
+
+        // Mobile sidebar toggle
+        document.getElementById('openSidebar').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.add('active');
+        });
+
+        document.getElementById('closeSidebar').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.remove('active');
+        });
+
+        // Dashboard functions
+        function updateDashboard() {
+            // Update counts
+            document.getElementById('totalOrders').textContent = orders.length;
+            document.getElementById('totalCustomers').textContent = customers.length;
+            
+            // Calculate total revenue
+            const totalRevenue = orders.reduce((sum, order) => sum + order.totalPrice, 0);
+            document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+            
+            // Calculate pending orders
+            const pendingOrders = orders.filter(order => order.orderType === 'pending').length;
+            document.getElementById('pendingOrders').textContent = pendingOrders;
+            
+            // Update recent orders table
+            const recentOrdersTable = document.getElementById('recentOrdersTable');
+            recentOrdersTable.innerHTML = '';
+            
+            if (orders.length === 0) {
+                recentOrdersTable.innerHTML = `
+                    <tr>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm" colspan="4">Belum ada pesanan</td>
+                    </tr>
+                `;
+            } else {
+                // Sort orders by date (newest first) and take the first 5
+                const recentOrders = [...orders].sort((a, b) => {
+                    const dateA = a.date ? new Date(a.date) : new Date(0);
+                    const dateB = b.date ? new Date(b.date) : new Date(0);
+                    return dateB - dateA;
+                }).slice(0, 5);
+                
+                recentOrders.forEach(order => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${order.customerName}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${order.orderName}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${formatCurrency(order.totalPrice)}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${order.orderType === 'ready' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                ${order.orderType === 'ready' ? 'Ready Stok' : 'Pending Order'}
+                            </span>
+                        </td>
+                    `;
+                    recentOrdersTable.appendChild(row);
+                });
+            }
+            
+            // Update chart
+            updateOrderChart();
+        }
+
+        function updateOrderChart() {
+            const ctx = document.getElementById('orderChart').getContext('2d');
+            
+            // Count orders by type
+            const readyOrders = orders.filter(order => order.orderType === 'ready').length;
+            const pendingOrders = orders.filter(order => order.orderType === 'pending').length;
+            
+            // Create chart
+            if (window.orderChart && window.orderChart.destroy) {
+                window.orderChart.destroy();
+            }
+            
+            window.orderChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Ready Stok', 'Pending Order'],
+                    datasets: [{
+                        label: 'Jumlah Pesanan',
+                        data: [readyOrders, pendingOrders],
+                        backgroundColor: [
+                            'rgba(34, 197, 94, 0.6)',
+                            'rgba(234, 179, 8, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(34, 197, 94, 1)',
+                            'rgba(234, 179, 8, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Orders functions
+        function renderOrders() {
+            const ordersTable = document.getElementById('ordersTable');
+            const orderCount = document.getElementById('orderCount');
+            
+            // Filter orders based on search and filter
+            const searchTerm = document.getElementById('orderSearch').value.toLowerCase();
+            const filterType = document.getElementById('orderFilter').value;
+            
+            let filteredOrders = orders;
+            
+            if (searchTerm) {
+                filteredOrders = filteredOrders.filter(order => 
+                    order.customerName.toLowerCase().includes(searchTerm) ||
+                    order.orderName.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (filterType !== 'all') {
+                filteredOrders = filteredOrders.filter(order => order.orderType === filterType);
+            }
+            
+            // Update order count
+            orderCount.textContent = filteredOrders.length;
+            
+            // Render orders
+            ordersTable.innerHTML = '';
+            
+            if (filteredOrders.length === 0) {
+                ordersTable.innerHTML = `
+                    <tr>
+                        <td class="py-4 px-4 border-b border-gray-200 text-sm" colspan="8">Tidak ada pesanan yang ditemukan</td>
+                    </tr>
+                `;
+            } else {
+                filteredOrders.forEach(order => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${order.customerName}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${order.orderName}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${order.orderType === 'ready' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                ${order.orderType === 'ready' ? 'Ready Stok' : 'Pending Order'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${order.quantity}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${formatCurrency(order.totalPrice)}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${order.paymentType === 'cash' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}">
+                                ${order.paymentType === 'cash' ? 'Cash' : 'Transfer'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">
+                            ${getDeliveryTypeLabel(order.deliveryType)}
+                        </td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">
+                            <div class="flex space-x-2">
+                                <button onclick="viewOrderDetail(${order.id})" class="text-blue-600 hover:text-blue-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                                <button onclick="showOrderForm(${order.id})" class="text-yellow-600 hover:text-yellow-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </button>
+                                <button onclick="showDeleteConfirm(${order.id})" class="text-red-600 hover:text-red-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    ordersTable.appendChild(row);
+                });
+            }
+        }
+
+        function getDeliveryTypeLabel(type) {
+            switch(type) {
+                case 'pickup':
+                    return '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Ambil Sendiri</span>';
+                case 'cod':
+                    return '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">COD</span>';
+                case 'delivery':
+                    return '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">Diantar</span>';
+                default:
+                    return '';
+            }
+        }
+
+        function showOrderForm(orderId = null) {
+            const modal = document.getElementById('orderFormModal');
+            const form = document.getElementById('orderForm');
+            const title = document.getElementById('orderFormTitle');
+            
+            // Reset form
+            form.reset();
+
+            // Ensure event listeners for auto-update total price
+            const quantityInput = document.getElementById('quantity');
+            const sellingPriceInput = document.getElementById('sellingPrice');
+            quantityInput.removeEventListener('input', updateTotalPrice);
+            sellingPriceInput.removeEventListener('input', updateTotalPrice);
+            quantityInput.addEventListener('input', updateTotalPrice);
+            sellingPriceInput.addEventListener('input', updateTotalPrice);
+
+            if (orderId) {
+                // Edit mode
+                title.textContent = 'Edit Pesanan';
+                currentOrderId = orderId;
+                
+                const order = orders.find(o => o.id === orderId);
+                if (order) {
+                    document.getElementById('orderId').value = order.id;
+                    document.getElementById('customerName').value = order.customerName;
+                    document.getElementById('customerAddress').value = order.customerAddress;
+                    document.getElementById('customerPhone').value = order.customerPhone;
+                    document.getElementById('orderName').value = order.orderName;
+                    document.getElementById('orderType').value = order.orderType;
+                    document.getElementById('quantity').value = order.quantity;
+                    document.getElementById('costPrice').value = order.costPrice;
+                    document.getElementById('sellingPrice').value = order.sellingPrice;
+                    document.getElementById('paymentType').value = order.paymentType;
+                    document.getElementById('deliveryType').value = order.deliveryType;
+                    
+                    // Update total price
+                    updateTotalPrice();
+                }
+            } else {
+                // Add mode
+                title.textContent = 'Tambah Pesanan Baru';
+                currentOrderId = null;
+                document.getElementById('orderId').value = '';
+                
+                // Set default values for new order
+                document.getElementById('quantity').value = 1;
+                document.getElementById('costPrice').value = 0;
+                document.getElementById('sellingPrice').value = 0;
+                
+                // Initialize total price
+                updateTotalPrice();
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        function hideOrderForm() {
+            document.getElementById('orderFormModal').classList.add('hidden');
+        }
+
+        function viewOrderDetail(orderId) {
+            const modal = document.getElementById('orderDetailModal');
+            const order = orders.find(o => o.id === orderId);
+            
+            if (order) {
+                currentOrderId = orderId;
+                
+                // Fill order details
+                document.getElementById('detailCustomerName').textContent = order.customerName;
+                document.getElementById('detailCustomerAddress').textContent = order.customerAddress;
+                document.getElementById('detailCustomerPhone').textContent = order.customerPhone;
+                document.getElementById('detailOrderName').textContent = order.orderName;
+                document.getElementById('detailOrderType').textContent = order.orderType === 'ready' ? 'Ready Stok' : 'Pending Order';
+                document.getElementById('detailQuantity').textContent = order.quantity;
+                document.getElementById('detailCostPrice').textContent = formatCurrency(order.costPrice);
+                document.getElementById('detailSellingPrice').textContent = formatCurrency(order.sellingPrice);
+                document.getElementById('detailTotalPrice').textContent = formatCurrency(order.totalPrice);
+                document.getElementById('detailPaymentType').textContent = order.paymentType === 'cash' ? 'Cash' : 'Transfer';
+                
+                let deliveryText = '';
+                switch(order.deliveryType) {
+                    case 'pickup':
+                        deliveryText = 'Ambil Sendiri';
+                        break;
+                    case 'cod':
+                        deliveryText = 'COD';
+                        break;
+                    case 'delivery':
+                        deliveryText = 'Diantar';
+                        break;
+                }
+                document.getElementById('detailDeliveryType').textContent = deliveryText;
+                
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function hideOrderDetail() {
+            document.getElementById('orderDetailModal').classList.add('hidden');
+        }
+
+        function editOrder() {
+            hideOrderDetail();
+            showOrderForm(currentOrderId);
+        }
+
+        function showDeleteConfirm(orderId) {
+            currentOrderId = orderId;
+            document.getElementById('deleteConfirmModal').classList.remove('hidden');
+        }
+
+        function hideDeleteConfirm() {
+            document.getElementById('deleteConfirmModal').classList.add('hidden');
+        }
+
+        function confirmDelete() {
+            if (currentOrderId) {
+                // Find order index
+                const orderIndex = orders.findIndex(o => o.id === currentOrderId);
+                
+                if (orderIndex !== -1) {
+                    // Remove order from orders array
+                    orders.splice(orderIndex, 1);
+                    
+                    // Save data
+                    saveData();
+                    
+                    // Update UI
+                    updateDashboard();
+                    renderOrders();
+                }
+            }
+            
+            hideDeleteConfirm();
+        }
+
+        // This function calculates and updates the total price display
+        function updateTotalPrice() {
+            const quantity = parseInt(document.getElementById('quantity').value) || 0;
+            const sellingPrice = parseInt(document.getElementById('sellingPrice').value) || 0;
+            const totalPrice = quantity * sellingPrice;
+            
+            document.getElementById('totalPrice').textContent = formatCurrency(totalPrice);
+            console.log("Total price updated:", totalPrice);
+        }
+
+        // Customers functions
+        function renderCustomers() {
+            const customersTable = document.getElementById('customersTable');
+            const customerCount = document.getElementById('customerCount');
+            
+            // Filter customers based on search
+            const searchTerm = document.getElementById('customerSearch')?.value?.toLowerCase() || '';
+            
+            let filteredCustomers = customers;
+            
+            if (searchTerm) {
+                filteredCustomers = filteredCustomers.filter(customer => 
+                    customer.name.toLowerCase().includes(searchTerm) ||
+                    customer.phone.includes(searchTerm)
+                );
+            }
+            
+            // Update customer count
+            customerCount.textContent = filteredCustomers.length;
+            
+            // Render customers
+            customersTable.innerHTML = '';
+            
+            if (filteredCustomers.length === 0) {
+                customersTable.innerHTML = `
+                    <tr>
+                        <td class="py-4 px-4 border-b border-gray-200 text-sm" colspan="5">Tidak ada pelanggan yang ditemukan</td>
+                    </tr>
+                `;
+            } else {
+                filteredCustomers.forEach(customer => {
+                    // Calculate total orders for this customer
+                    const customerOrders = orders.filter(order => order.customerId === customer.id);
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${customer.name}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${customer.address}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${customer.phone}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${customerOrders.length}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">
+                            <div class="flex space-x-2">
+                                <button onclick="viewCustomerDetail(${customer.id})" class="text-blue-600 hover:text-blue-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                                <button onclick="showCustomerForm(${customer.id})" class="text-yellow-600 hover:text-yellow-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </button>
+                                <button onclick="showDeleteCustomerConfirm(${customer.id})" class="text-red-600 hover:text-red-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    customersTable.appendChild(row);
+                });
+            }
+        }
+
+        function showCustomerForm(customerId = null) {
+            const modal = document.getElementById('customerFormModal');
+            const form = document.getElementById('customerForm');
+            const title = document.getElementById('customerFormTitle');
+            
+            // Reset form
+            form.reset();
+            
+            if (customerId) {
+                // Edit mode
+                title.textContent = 'Edit Pelanggan';
+                currentCustomerId = customerId;
+                
+                const customer = customers.find(c => c.id === customerId);
+                if (customer) {
+                    document.getElementById('customerId').value = customer.id;
+                    document.getElementById('customerFormName').value = customer.name;
+                    document.getElementById('customerFormAddress').value = customer.address;
+                    document.getElementById('customerFormPhone').value = customer.phone;
+                }
+            } else {
+                // Add mode
+                title.textContent = 'Tambah Pelanggan Baru';
+                currentCustomerId = null;
+                document.getElementById('customerId').value = '';
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        function hideCustomerForm() {
+            document.getElementById('customerFormModal').classList.add('hidden');
+        }
+
+        function viewCustomerDetail(customerId) {
+            const modal = document.getElementById('customerDetailModal');
+            const customer = customers.find(c => c.id === customerId);
+            
+            if (customer) {
+                currentCustomerId = customerId;
+                
+                // Fill customer details
+                document.getElementById('detailCustomerViewName').textContent = customer.name;
+                document.getElementById('detailCustomerViewAddress').textContent = customer.address;
+                document.getElementById('detailCustomerViewPhone').textContent = customer.phone;
+                
+                // Get customer orders
+                const customerOrders = orders.filter(order => order.customerId === customerId);
+                document.getElementById('detailCustomerOrderCount').textContent = customerOrders.length;
+                
+                // Calculate total spent
+                const totalSpent = customerOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+                document.getElementById('detailCustomerTotalSpent').textContent = formatCurrency(totalSpent);
+                
+                // Render customer orders
+                const customerOrdersTable = document.getElementById('customerOrdersTable');
+                customerOrdersTable.innerHTML = '';
+                
+                if (customerOrders.length === 0) {
+                    customerOrdersTable.innerHTML = `
+                        <tr>
+                            <td class="py-3 px-4 border-b border-gray-200 text-sm" colspan="3">Belum ada pesanan</td>
+                        </tr>
+                    `;
+                } else {
+                    customerOrders.forEach(order => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="py-3 px-4 border-b border-gray-200 text-sm">${order.orderName}</td>
+                            <td class="py-3 px-4 border-b border-gray-200 text-sm">${order.quantity}</td>
+                            <td class="py-3 px-4 border-b border-gray-200 text-sm">${formatCurrency(order.totalPrice)}</td>
+                        `;
+                        customerOrdersTable.appendChild(row);
+                    });
+                }
+                
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function hideCustomerDetail() {
+            document.getElementById('customerDetailModal').classList.add('hidden');
+        }
+
+        function editCustomer() {
+            hideCustomerDetail();
+            showCustomerForm(currentCustomerId);
+        }
+
+        function showDeleteCustomerConfirm(customerId) {
+            currentCustomerId = customerId;
+            document.getElementById('deleteCustomerConfirmModal').classList.remove('hidden');
+        }
+
+        function hideDeleteCustomerConfirm() {
+            document.getElementById('deleteCustomerConfirmModal').classList.add('hidden');
+        }
+
+        function confirmDeleteCustomer() {
+            if (currentCustomerId) {
+                // Find customer index
+                const customerIndex = customers.findIndex(c => c.id === currentCustomerId);
+                
+                if (customerIndex !== -1) {
+                    // Remove customer from customers array
+                    customers.splice(customerIndex, 1);
+                    
+                    // Remove all orders for this customer
+                    orders = orders.filter(order => order.customerId !== currentCustomerId);
+                    
+                    // Save data
+                    saveData();
+                    
+                    // Update UI
+                    updateDashboard();
+                    renderCustomers();
+                }
+            }
+            
+            hideDeleteCustomerConfirm();
+        }
+
+        // Reports functions
+        function generateReport() {
+            const startDate = document.getElementById('reportStartDate').value;
+            const endDate = document.getElementById('reportEndDate').value;
+            const reportType = document.getElementById('reportType').value;
+            
+            // Filter orders based on date range and type
+            let filteredOrders = [...orders];
+            
+            if (startDate) {
+                const start = new Date(startDate);
+                filteredOrders = filteredOrders.filter(order => {
+                    const orderDate = order.date ? new Date(order.date) : null;
+                    return orderDate && orderDate >= start;
+                });
+            }
+            
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999); // End of day
+                filteredOrders = filteredOrders.filter(order => {
+                    const orderDate = order.date ? new Date(order.date) : null;
+                    return orderDate && orderDate <= end;
+                });
+            }
+            
+            if (reportType !== 'all') {
+                filteredOrders = filteredOrders.filter(order => order.orderType === reportType);
+            }
+            
+            // Calculate totals
+            const totalOrders = filteredOrders.length;
+            const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+            const totalProfit = filteredOrders.reduce((sum, order) => sum + (order.sellingPrice - order.costPrice) * order.quantity, 0);
+            
+            // Update report summary
+            document.getElementById('reportTotalOrders').textContent = totalOrders;
+            document.getElementById('reportTotalRevenue').textContent = formatCurrency(totalRevenue);
+            document.getElementById('reportTotalProfit').textContent = formatCurrency(totalProfit);
+            
+            // Render report table
+            const reportTable = document.getElementById('reportTable');
+            reportTable.innerHTML = '';
+            
+            if (filteredOrders.length === 0) {
+                reportTable.innerHTML = `
+                    <tr>
+                        <td class="py-4 px-4 border-b border-gray-200 text-sm" colspan="8">Tidak ada data yang ditemukan</td>
+                    </tr>
+                `;
+            } else {
+                filteredOrders.forEach(order => {
+                    const profit = (order.sellingPrice - order.costPrice) * order.quantity;
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${order.customerName}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${order.orderName}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${order.orderType === 'ready' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                ${order.orderType === 'ready' ? 'Ready Stok' : 'Pending Order'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${order.quantity}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${formatCurrency(order.costPrice)}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${formatCurrency(order.sellingPrice)}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${formatCurrency(order.totalPrice)}</td>
+                        <td class="py-3 px-4 border-b border-gray-200 text-sm">${formatCurrency(profit)}</td>
+                    `;
+                    reportTable.appendChild(row);
+                });
+            }
+        }
+
+        function exportToExcel() {
+            // Get table data
+            const table = document.getElementById('reportTable');
+            const rows = table.querySelectorAll('tr');
+            
+            if (rows.length === 0 || (rows.length === 1 && rows[0].cells[0].colSpan)) {
+                alert('Tidak ada data untuk diekspor');
+                return;
+            }
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Create headers
+            const headers = [
+                'Pelanggan', 
+                'Pesanan', 
+                'Tipe', 
+                'Kuantiti', 
+                'HPP', 
+                'Harga Jual', 
+                'Total', 
+                'Keuntungan'
+            ];
+            
+            // Create data array
+            const data = [headers];
+            
+            rows.forEach(row => {
+                const rowData = [];
+                row.querySelectorAll('td').forEach(cell => {
+                    // Clean text (remove currency formatting, etc.)
+                    let text = cell.textContent.trim();
+                    
+                    // Handle special case for type column
+                    if (text === 'Ready Stok' || text === 'Pending Order') {
+                        rowData.push(text);
+                    } else if (text.startsWith('Rp')) {
+                        // Remove currency formatting
+                        rowData.push(text.replace('Rp', '').replace(/\./g, '').trim());
+                    } else {
+                        rowData.push(text);
+                    }
+                });
+                
+                if (rowData.length > 0 && rowData[0] !== 'Tidak ada data yang ditemukan') {
+                    data.push(rowData);
+                }
+            });
+            
+            // Create worksheet
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            
+            // Add worksheet to workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Laporan Pesanan');
+            
+            // Generate Excel file
+            const today = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `Laporan_Pesanan_${today}.xlsx`);
+        }
+
+        function exportToPDF() {
+            // Get table data
+            const table = document.getElementById('reportTable');
+            const rows = table.querySelectorAll('tr');
+            
+            if (rows.length === 0 || (rows.length === 1 && rows[0].cells[0].colSpan)) {
+                alert('Tidak ada data untuk diekspor');
+                return;
+            }
+            
+            // Create headers
+            const headers = [
+                'Pelanggan', 
+                'Pesanan', 
+                'Tipe', 
+                'Kuantiti', 
+                'HPP', 
+                'Harga Jual', 
+                'Total', 
+                'Keuntungan'
+            ];
+            
+            // Create data array
+            const data = [];
+            
+            rows.forEach(row => {
+                const rowData = [];
+                row.querySelectorAll('td').forEach(cell => {
+                    // Clean text (remove HTML tags)
+                    let text = cell.textContent.trim();
+                    rowData.push(text);
+                });
+                
+                if (rowData.length > 0 && rowData[0] !== 'Tidak ada data yang ditemukan') {
+                    data.push(rowData);
+                }
+            });
+            
+            // Create PDF
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Add title
+            doc.setFontSize(18);
+            doc.text('Laporan Pesanan', 14, 22);
+            
+            // Add date
+            const today = new Date().toLocaleDateString();
+            doc.setFontSize(11);
+            doc.text(`Tanggal: ${today}`, 14, 30);
+            
+            // Add summary
+            doc.text(`Total Pesanan: ${document.getElementById('reportTotalOrders').textContent}`, 14, 38);
+            doc.text(`Total Pendapatan: ${document.getElementById('reportTotalRevenue').textContent}`, 14, 46);
+            doc.text(`Total Keuntungan: ${document.getElementById('reportTotalProfit').textContent}`, 14, 54);
+            
+            // Add table
+            doc.autoTable({
+                head: [headers],
+                body: data,
+                startY: 60,
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [59, 130, 246] }
+            });
+            
+            // Save PDF
+            doc.save(`Laporan_Pesanan_${today.replace(/\//g, '-')}.pdf`);
+        }
+
+        // Utility functions
+        function formatCurrency(amount) {
+            return 'Rp ' + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load data from localStorage
+            loadData();
+            
+            // Order form events
+            document.getElementById('orderForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const orderId = document.getElementById('orderId').value;
+                const customerName = document.getElementById('customerName').value;
+                const customerAddress = document.getElementById('customerAddress').value;
+                const customerPhone = document.getElementById('customerPhone').value;
+                const orderName = document.getElementById('orderName').value;
+                const orderType = document.getElementById('orderType').value;
+                const quantity = parseInt(document.getElementById('quantity').value) || 0;
+                const costPrice = parseInt(document.getElementById('costPrice').value) || 0;
+                const sellingPrice = parseInt(document.getElementById('sellingPrice').value) || 0;
+                const paymentType = document.getElementById('paymentType').value;
+                const deliveryType = document.getElementById('deliveryType').value;
+                
+                // Calculate total price
+                const totalPrice = quantity * sellingPrice;
+                
+                // Find or create customer
+                let customer = customers.find(c => c.phone === customerPhone);
+                let customerId;
+                
+                if (!customer) {
+                    // Create new customer
+                    customerId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1;
+                    customer = {
+                        id: customerId,
+                        name: customerName,
+                        address: customerAddress,
+                        phone: customerPhone
+                    };
+                    customers.push(customer);
+                } else {
+                    customerId = customer.id;
+                    // Update customer info
+                    customer.name = customerName;
+                    customer.address = customerAddress;
+                }
+                
+                if (orderId) {
+                    // Update existing order
+                    const orderIndex = orders.findIndex(o => o.id === parseInt(orderId));
+                    if (orderIndex !== -1) {
+                        orders[orderIndex] = {
+                            id: parseInt(orderId),
+                            customerId,
+                            customerName,
+                            customerAddress,
+                            customerPhone,
+                            orderName,
+                            orderType,
+                            quantity,
+                            costPrice,
+                            sellingPrice,
+                            totalPrice,
+                            paymentType,
+                            deliveryType,
+                            date: orders[orderIndex].date || new Date()
+                        };
+                    }
+                } else {
+                    // Create new order
+                    const newOrderId = orders.length > 0 ? Math.max(...orders.map(o => o.id)) + 1 : 1;
+                    const newOrder = {
+                        id: newOrderId,
+                        customerId,
+                        customerName,
+                        customerAddress,
+                        customerPhone,
+                        orderName,
+                        orderType,
+                        quantity,
+                        costPrice,
+                        sellingPrice,
+                        totalPrice,
+                        paymentType,
+                        deliveryType,
+                        date: new Date()
+                    };
+                    
+                    orders.push(newOrder);
+                }
+                
+                // Save data
+                saveData();
+                
+                // Update UI
+                updateDashboard();
+                renderOrders();
+                renderCustomers();
+                
+                // Hide modal
+                hideOrderForm();
+            });
+                // Update UI
+                updateDashboard();
+                renderOrders();
+                renderCustomers();
+                
+                // Hide modal
+                hideOrderForm();
+            });
+            
+            // Customer form events
+            document.getElementById('customerForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const customerId = document.getElementById('customerId').value;
+                const name = document.getElementById('customerFormName').value;
+                const address = document.getElementById('customerFormAddress').value;
+                const phone = document.getElementById('customerFormPhone').value;
+                
+                if (customerId) {
+                    // Update existing customer
+                    const customerIndex = customers.findIndex(c => c.id === parseInt(customerId));
+                    if (customerIndex !== -1) {
+                        customers[customerIndex].name = name;
+                        customers[customerIndex].address = address;
+                        customers[customerIndex].phone = phone;
+                        
+                        // Update customer name in orders
+                        orders.forEach(order => {
+                            if (order.customerId === parseInt(customerId)) {
+                                order.customerName = name;
+                                order.customerAddress = address;
+                                order.customerPhone = phone;
+                            }
+                        });
+                    }
+                } else {
+                    // Create new customer
+                    const newCustomerId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1;
+                    customers.push({
+                        id: newCustomerId,
+                        name,
+                        address,
+                        phone
+                    });
+                }
+                
+                // Save data
+                saveData();
+                
+                // Update UI
+                renderCustomers();
+                renderOrders();
+                
+                // Hide modal
+                hideCustomerForm();
+            });
+            
+            // Calculate total price when quantity or selling price changes
+            const quantityInput = document.getElementById('quantity');
+            const sellingPriceInput = document.getElementById('sellingPrice');
+            
+            // Add input event listeners to both fields
+            quantityInput.addEventListener('input', updateTotalPrice);
+            sellingPriceInput.addEventListener('input', updateTotalPrice);
+            
+            // Also add change event listeners for better compatibility
+            quantityInput.addEventListener('change', updateTotalPrice);
+            sellingPriceInput.addEventListener('change', updateTotalPrice);
+            
+            // Search and filter events
+            document.getElementById('orderSearch').addEventListener('input', renderOrders);
+            document.getElementById('orderFilter').addEventListener('change', renderOrders);
+            document.getElementById('customerSearch').addEventListener('input', renderCustomers);
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9641f40211af44b7',t:'MTc1MzM0NDc1My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
